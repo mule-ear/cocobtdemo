@@ -5,11 +5,17 @@ import bluetooth, sys, time
 import configparser, logging, argparse
 
 sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
+
+global userText
+
 # Had to make sock global - workaround because it kept disconnecting
 # when it was part of the bt_connect function
 # If I run across a better way, I'll fix this
 
-'''gui.py was written specifically for an arduino/bluetooth demo
+'''cocobtdeno.py was written specifically for an arduino/bluetooth demo
+
+The bluetooth module need tobe paired before running this.
+
 Pretty much everything is hard coded, excpet the bluetooth address.
 This is not meant to be robust, more of a POC.
 But it's meant to be easily expandable. 
@@ -30,7 +36,7 @@ def setUpLogger():
     else:
         formatter=logging.Formatter('%(asctime)s, %(msecs)d %(name)s %(levelname)s %(message)s', datefmt='%H:%M:%S')
 
-    logger = logging.getLogger('Bluetooth_CoCo_Demo')
+    logger = logging.getLogger('Bluetooth_CoCo_Bluetooth_Demo')
     logger.setLevel(logging.DEBUG)
 
     # log to file
@@ -56,6 +62,7 @@ def getCLIArguments(bt_addr):
     return (args.address, args.log_level)
 
 def btConnect( sock, btAddr, btPort, bt_timeout):
+    global userText
     log.info("Trying to connect "+ btAddr)
     try:
         #sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
@@ -67,6 +74,7 @@ def btConnect( sock, btAddr, btPort, bt_timeout):
         sys.exit(22)
     else:
         log.debug("Successful ?")
+        userText.set("Successfully connected!")
 
 def ledOn(sock):
     try:
@@ -75,8 +83,11 @@ def ledOn(sock):
     except bluetooth.btcommon.BluetoothError as e:
         log.error("Caught an exception connecting:"+ str(e))
         log.error("You may need to connect first")
+        userText.set("Are you connected?")
         return
-    log.info(sock.recv(3))
+    else:
+        log.info(sock.recv(3))
+        userText.set("Turning the LED on.")
 
 def ledOff():
     try:
@@ -86,16 +97,26 @@ def ledOff():
     except bluetooth.btcommon.BluetoothError as e:
         log.error("Caught an exception connecting:"+ str(e))
         log.error("You may need to connect first")
+        userText.set("Are you connected?")
         return
+    else:
+        log.debug("Led Off.")
+        userText.set("Turning LED Off.")
 
 def runSubroutine():
     try:
         log.debug("Running the test subroutine")
         sock.send("2")
+        userText.set("Running subroutine.")
     except bluetooth.btcommon.BluetoothError as e:
         log.error("Caught an exception connecting:"+ str(e))
         log.error("You may need to connect first")
+        userText.set("Are you connected?")
         return
+    else:
+        sock.recv(40)
+        log.info("Completed.")
+        userText.set("Subroutine completed.")
 
 def relayOn():
     try:
@@ -104,7 +125,12 @@ def relayOn():
     except bluetooth.btcommon.BluetoothError as e:
         log.error("Caught an exception connecting:"+ str(e))
         log.error("You may need to connect first")
+        userText.set("Are you connected?")
         return
+    else:
+        log.debug("Relay On.")
+        userText.set("Turning Realy On.")
+
 
 def relayOff():
     try:
@@ -114,18 +140,27 @@ def relayOff():
         log.error("Caught an exception connecting:"+ str(e))
         log.error("You may need to connect first")
         return
+    else:
+        log.debug("Relay Off.")
+        userText.set("Turning Relay Off.")
+
 
 def creatGui( addr, port, timeout, sock ):
     win = Tk()
+    win.geometry('440x100')
+    global userText
+    userText=StringVar()
+    userText.set("Not Connected")
     win.wm_title("CoCo Bluetooth Demo")
     log.info("Creating window")
-    b0 = Button(win, text = "Connect", command = lambda: btConnect(sock, addr, int(port), int(timeout))).pack(side=LEFT)
-    b1 = Button(win, text = "LED on", command = lambda: ledOn(sock)).pack(side=LEFT)
-    b2 = Button(win, text = "LED off", command = ledOff).pack(side=LEFT)
-    b3 = Button(win, text = "Run subroutine", command = runSubroutine).pack(side=LEFT)
-    b4 = Button(win, text = "Relay on", command = relayOn).pack(side=LEFT)
-    b5 = Button(win, text = "Relay off", command = relayOff).pack(side=LEFT)
-    b6 = Button(win, text = "Quit", command = win.destroy).pack(side=LEFT)
+    status = Label(win, textvariable=userText).grid(row=2, column = 0, columnspan=2, sticky=W+E+N+S,padx=5,pady=5)
+    b0 = Button(win, text = "Connect", command = lambda: btConnect(sock, addr, int(port), int(timeout))).grid(row=1, column=0, padx=5,pady = 5)
+    b1 = Button(win, text = "LED on", command = lambda: ledOn(sock)).grid(row=0, column=0,padx=5,pady=5)
+    b2 = Button(win, text = "LED off", command = ledOff).grid(row=0, column=1,padx=5,pady=5)
+    b3 = Button(win, text = "Run sub", command = runSubroutine).grid(row=0, column=2,padx=5,pady=5)
+    b4 = Button(win, text = "Relay on", command = relayOn).grid(row=0, column=3,padx=5,pady=5)
+    b5 = Button(win, text = "Relay off", command = relayOff).grid(row=0, column=4,padx=5,pady=5)
+    b6 = Button(win, text = "Quit", command = win.destroy).grid(row=1, column=4, padx = 5, pady =5)
 
     return win
 
